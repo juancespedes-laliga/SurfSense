@@ -12,17 +12,17 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Discord](https://img.shields.io/discord/1359368468260192417?label=Discord)](https://discord.gg/ejRNvftDp9)
 
-  <a href="https://www.surfsense.com/"><img alt="SurfSense, la alternativa de código abierto a NotebookLM, aislada de la red" src="surfsense_web/public/homepage/banner.png" /></a>
+<a href="https://www.surfsense.com/"><img alt="SurfSense, la alternativa de código abierto a NotebookLM, aislada de la red" src="surfsense_web/public/homepage/banner.png" /></a>
 
-  <h1>SurfSense</h1>
+<h1>SurfSense</h1>
 
-  <p>
+<p>
     <b>La alternativa de código abierto a NotebookLM, aislada de la red.</b>
     <br />
     El agente de IA que investiga, transforma y edita tus documentos, en tu propio equipo.
   </p>
 
-  <p>
+<p>
     <a href="https://www.surfsense.com/downloads"><b>Descargar</b></a> ·
     <a href="#qué-hace-con-cada-formato">Formatos</a> ·
     <a href="#inicio-rápido">Inicio rápido</a> ·
@@ -31,9 +31,9 @@
     <a href="https://discord.gg/ejRNvftDp9">Discord</a>
   </p>
 
-  <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter/SurfSense | Trendshift" width="250" height="55" /></a>
+<a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter/SurfSense | Trendshift" width="250" height="55" /></a>
 
-  <p>
+<p>
     <a href="README.md">English</a> | <a href="README.ar.md">العربية</a> | <a href="README.de.md">Deutsch</a> | Español | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.pt-BR.md">Português</a> | <a href="README.ru.md">Русский</a> | <a href="README.zh-CN.md">简体中文</a>
   </p>
 </div>
@@ -42,11 +42,12 @@ https://github.com/user-attachments/assets/88326b9d-e763-46db-9635-75f9df9e8682
 
 SurfSense es una aplicación de escritorio gratuita y de código abierto para los documentos que no puedes subir a la nube. Es un agente de IA al estilo de NotebookLM, centrado en la privacidad, que investiga, transforma y edita tus documentos en tu propio equipo. El índice se queda en tu disco, tú eliges el modelo, local o remoto, y no hay ninguna cuenta que crear.
 
-| Plataforma | Descarga |
-|---|---|
-| **Windows** x64 | [SurfSense-Setup.exe](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense-Setup.exe) |
-| **macOS** Apple Silicon | [SurfSense-arm64.dmg](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense-arm64.dmg) |
-| **Linux** x64 | [AppImage](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense.AppImage) · [deb](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense.deb) |
+
+| Plataforma              | Descarga                                                                                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Windows** x64         | [SurfSense-Setup.exe](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense-Setup.exe)                                                                             |
+| **macOS** Apple Silicon | [SurfSense-arm64.dmg](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense-arm64.dmg)                                                                             |
+| **Linux** x64           | [AppImage](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense.AppImage) · [deb](https://github.com/MODSetter/SurfSense/releases/latest/download/SurfSense.deb) |
 
 > [!NOTE]
 > **¿Usabas la aplicación web alojada?** Exporta tus espacios de trabajo antes del 18 de octubre de 2026 e impórtalos aquí. Consulta [la página del cierre](https://www.surfsense.com/sunset).
@@ -59,18 +60,19 @@ SurfSense es una aplicación de escritorio gratuita y de código abierto para lo
 
 ## Qué hace con cada formato
 
-| Formato | Investigar (respuestas con citas) | Crear | Editar (en una copia) | Transformar |
-|---|---|---|---|---|
-| **PDF** | ✓ incluso páginas escaneadas³ | ✓ | Rellenar y aplanar formularios; estampar marcas de agua, números de página, encabezados y pies de página | Combinar, dividir, extraer, rotar y reordenar páginas |
-| **Word** `.docx` | ✓ | ✓ o a partir de tu propio `.docx` como plantilla | ✓ cuerpo del texto, con control de cambios y comentarios | A PDF¹ |
-| **Excel** `.xlsx` | ✓ el agente también lee las fórmulas | ✓ con fórmulas y gráficos nativos | ✓ valores de celda y fórmulas | Analizar con pandas y representar los resultados en gráficos |
-| **PowerPoint** `.pptx` | ✓ | ✓ o a partir de tu propio `.pptx` como plantilla | Reemplazar texto en diapositivas y notas; eliminar o duplicar diapositivas | A PDF¹ |
-| **CSV** | ✓ | — | — | Analizar con pandas y representar los resultados en gráficos |
-| **Imágenes** PNG, JPEG, TIFF, BMP, WebP | ✓ texto leído por OCR³ | Imágenes e infografías² | — | Insertar en documentos nuevos |
-| **Markdown**, texto sin formato | ✓ | ✓ Markdown | — | — |
-| **HTML** | ✓ | ✓ página web | — | — |
-| **Podcast** (audio) | — | ✓ con transcripción; por defecto, la voz se genera en tu equipo | — | — |
-| **Mapas mentales, tarjetas didácticas, cuestionarios** | — | ✓ en la aplicación | — | — |
+
+| Formato                                                 | Investigar (respuestas con citas)       | Crear                                                             | Editar (en una copia)                                                                                       | Transformar                                                   |
+| ------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **PDF**                                                 | ✓ incluso páginas escaneadas³        | ✓                                                                | Rellenar y aplanar formularios; estampar marcas de agua, números de página, encabezados y pies de página | Combinar, dividir, extraer, rotar y reordenar páginas        |
+| **Word** `.docx`                                        | ✓                                      | ✓ o a partir de tu propio`.docx` como plantilla                  | ✓ cuerpo del texto, con control de cambios y comentarios                                                   | A PDF¹                                                       |
+| **Excel** `.xlsx`                                       | ✓ el agente también lee las fórmulas | ✓ con fórmulas y gráficos nativos                              | ✓ valores de celda y fórmulas                                                                             | Analizar con pandas y representar los resultados en gráficos |
+| **PowerPoint** `.pptx`                                  | ✓                                      | ✓ o a partir de tu propio`.pptx` como plantilla                  | Reemplazar texto en diapositivas y notas; eliminar o duplicar diapositivas                                  | A PDF¹                                                       |
+| **CSV**                                                 | ✓                                      | —                                                                | —                                                                                                          | Analizar con pandas y representar los resultados en gráficos |
+| **Imágenes** PNG, JPEG, TIFF, BMP, WebP                | ✓ texto leído por OCR³               | Imágenes e infografías²                                        | —                                                                                                          | Insertar en documentos nuevos                                 |
+| **Markdown**, texto sin formato                         | ✓                                      | ✓ Markdown                                                       | —                                                                                                          | —                                                            |
+| **HTML**                                                | ✓                                      | ✓ página web                                                    | —                                                                                                          | —                                                            |
+| **Podcast** (audio)                                     | —                                      | ✓ con transcripción; por defecto, la voz se genera en tu equipo | —                                                                                                          | —                                                            |
+| **Mapas mentales, tarjetas didácticas, cuestionarios** | —                                      | ✓ en la aplicación                                              | —                                                                                                          | —                                                            |
 
 <sub>¹ Con la compatibilidad con Office (LibreOffice) activada en Ajustes; nunca viene incluida en el instalador. ² Necesita un modelo de imagen, local o remoto; no hay ninguno elegido por defecto. ³ El OCR lee escritura latina, china y japonesa.</sub>
 
@@ -78,13 +80,14 @@ Las ediciones, las conversiones y las herramientas de PDF siempre crean un archi
 
 ## Cómo se compara
 
-| | NotebookLM (ahora Gemini Notebook) | SurfSense |
-|---|---|---|
-| Funciona sin conexión / aislado de la red | No | **Sí** |
-| Tus documentos salen de tu equipo | Sí | **No**, salvo que elijas un modelo remoto |
-| Puede editar tus archivos | No | **Sí** |
-| Código abierto | No | **Apache-2.0** |
-| Modelos | Solo Gemini | Cualquier API compatible con OpenAI, o una local |
+
+|                                            | NotebookLM (ahora Gemini Notebook) | SurfSense                                        |
+| ------------------------------------------ | ---------------------------------- | ------------------------------------------------ |
+| Funciona sin conexión / aislado de la red | No                                 | **Sí**                                          |
+| Tus documentos salen de tu equipo          | Sí                                | **No**, salvo que elijas un modelo remoto        |
+| Puede editar tus archivos                  | No                                 | **Sí**                                          |
+| Código abierto                            | No                                 | **Apache-2.0**                                   |
+| Modelos                                    | Solo Gemini                        | Cualquier API compatible con OpenAI, o una local |
 
 ## Comunidad
 
