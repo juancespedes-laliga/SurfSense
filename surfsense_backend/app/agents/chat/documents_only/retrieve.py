@@ -19,6 +19,7 @@ from app.agents.chat.shared.context import SurfSenseContextSchema
 from app.db import shielded_async_session
 from app.services.reranker_service import RerankerService
 
+from .section_tail import with_section_tails
 from .state import DocumentsOnlyState
 
 # Matches the main agent's search_knowledge_base default; enough for a
@@ -98,6 +99,7 @@ def build_retrieve_node(workspace_id: int):
                 scope=SearchScope(document_ids=pinned or None),
                 top_k=_TOP_K,
             )
+            hits = await with_section_tails(session, hits)
         rendered = await asyncio.to_thread(
             build_context, query, hits, registry, reranker=reranker
         )
