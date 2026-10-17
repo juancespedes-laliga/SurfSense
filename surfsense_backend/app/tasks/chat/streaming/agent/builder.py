@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.agents.chat.documents_only import (
+    build_documents_only_agent,
+    documents_only_enabled,
+)
 from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemSelection,
 )
@@ -37,6 +41,10 @@ async def build_main_agent_for_thread(
     auth_context: AuthContext | None = None,
     retrieval_scope: RetrievalScope = RetrievalScope.DOCUMENTS,
 ) -> Any:
+    if documents_only_enabled(retrieval_scope):
+        return build_documents_only_agent(
+            llm=llm, workspace_id=workspace_id, checkpointer=checkpointer
+        )
     return await agent_factory(
         llm=llm,
         workspace_id=workspace_id,
