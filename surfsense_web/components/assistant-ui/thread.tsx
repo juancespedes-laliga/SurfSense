@@ -128,7 +128,12 @@ const COMPOSER_PLACEHOLDER_LONG =
 	"Research the live web, scrape platforms, automate briefs. Use / for prompts, @ for docs";
 const COMPOSER_PLACEHOLDER_SHORT = "Ask anything, use / or @";
 
-const SEARCH_SCOPE_OPTIONS = [
+// Scopes offered in the composer. Only documents while the backend runs the
+// documents-only chat (SURFSENSE_DOCUMENTS_ONLY_CHAT); add "web" or "all" back
+// here when that mode is turned off.
+const ENABLED_SEARCH_SCOPES: readonly string[] = ["documents"];
+
+const ALL_SEARCH_SCOPE_OPTIONS = [
 	{
 		value: "documents",
 		label: "Docs",
@@ -151,6 +156,10 @@ const SEARCH_SCOPE_OPTIONS = [
 		icon: Layers3,
 	},
 ] as const;
+
+const SEARCH_SCOPE_OPTIONS = ALL_SEARCH_SCOPE_OPTIONS.filter((option) =>
+	ENABLED_SEARCH_SCOPES.includes(option.value)
+);
 
 type ComposerSuggestionAnchorPoint = {
 	left: number;

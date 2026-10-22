@@ -8,7 +8,6 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.agents.chat.documents_only.answer import _history
 from app.agents.chat.documents_only.retrieve import _search_query, latest_question
 from app.agents.chat.documents_only.switch import documents_only_enabled
-from app.agents.chat.retrieval_scope import RetrievalScope
 
 pytestmark = pytest.mark.unit
 
@@ -51,14 +50,14 @@ def test_history_keeps_only_prior_text_turns():
 
 
 @pytest.mark.parametrize(
-    ("value", "scope", "expected"),
+    ("value", "expected"),
     [
-        ("TRUE", RetrievalScope.DOCUMENTS, True),
-        ("on", RetrievalScope.ALL, True),
-        ("TRUE", RetrievalScope.WEB, False),
-        ("", RetrievalScope.DOCUMENTS, False),
+        ("TRUE", True),
+        ("on", True),
+        ("false", False),
+        ("", False),
     ],
 )
-def test_switch(monkeypatch, value, scope, expected):
+def test_switch(monkeypatch, value, expected):
     monkeypatch.setenv("SURFSENSE_DOCUMENTS_ONLY_CHAT", value)
-    assert documents_only_enabled(scope) is expected
+    assert documents_only_enabled() is expected

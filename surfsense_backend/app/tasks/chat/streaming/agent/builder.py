@@ -41,7 +41,7 @@ async def build_main_agent_for_thread(
     auth_context: AuthContext | None = None,
     retrieval_scope: RetrievalScope = RetrievalScope.DOCUMENTS,
 ) -> Any:
-    if documents_only_enabled(retrieval_scope):
+    if documents_only_enabled():
         return build_documents_only_agent(
             llm=llm, workspace_id=workspace_id, checkpointer=checkpointer
         )
