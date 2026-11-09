@@ -1,0 +1,128 @@
+# =============================================================================
+# SurfSense — App services on top of docker-compose.deps-only.yml
+# =============================================================================
+# Adds API + Celery worker + Celery beat + web (built from local source) to the
+# deps-only stack, reusing its volumes (database, redis, ...) so existing data
+# is kept. Containers restart on their own whenever Docker starts.
+#
+# From repo root:
+#   docker compose -f docker/docker-compose.deps-only.yml -f docker/docker-compose.app.yml up -d --build
+#
+# Source edits under surfsense_backend/app and surfsense_web are picked up live;
+# a rebuild (--build) is only needed after dependency changes.
+# =============================================================================
+
+x-backend-build: &backend-build
+  context: ../surfsense_backend
+  args:
+    EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+
+# Host-run values in surfsense_backend/.env point at localhost; inside the
+# compose network the services are reached by name instead.
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-surfsense}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  REDIS_APP_URL: redis://redis:6379/0
+  CELERY_TASK_DEFAULT_QUEUE: surfsense
+  PYTHONPATH: /app
+  FILE_STORAGE_LOCAL_PATH: /app/.local_object_store
+  OPENSANDBOX_DOMAIN: opensandbox-server:8080
+
+x-backend-volumes: &backend-volumes
+  - ../surfsense_backend/app:/app/app
+  # Same folder the host-run backend used, so uploaded files carry over.
+  - ../surfsense_backend/.local_object_store:/app/.local_object_store
+
+services:
+  migrations:
+    build: *backend-build
+    env_file:
+      - ../surfsense_backend/.env
+    environment:
+      <<: *backend-env
+      SERVICE_ROLE: migrate
+      MIGRATION_TIMEOUT: ${MIGRATION_TIMEOUT:-900}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build: *backend-build
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes: *backend-volumes
+    env_file:
+      - ../surfsense_backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      <<: *backend-env
+      UVICORN_LOOP: asyncio
+      UNSTRUCTURED_HAS_PATCHED_LOOP: "1"
+      SERVICE_ROLE: api
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 200s
+    restart: unless-stopped
+
+  celery_worker:
+    build: *backend-build
+    volumes: *backend-volumes
+    env_file:
+      - ../surfsense_backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      <<: *backend-env
+      CELERY_QUEUES: surfsense,surfsense.connectors
+      CELERY_MIN_WORKERS: "1"
+      CELERY_MAX_WORKERS: "1"
+      SERVICE_ROLE: worker
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_beat:
+    build: *backend-build
+    env_file:
+      - ../surfsense_backend/.env
+    environment:
+      <<: *backend-env
+      SERVICE_ROLE: beat
+    depends_on:
+      celery_worker:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../surfsense_web
+      target: dev
+    volumes:
+      - ../surfsense_web:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    env_file:
+      - ../surfsense_web/.env
+    environment:
+      SURFSENSE_BACKEND_INTERNAL_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
