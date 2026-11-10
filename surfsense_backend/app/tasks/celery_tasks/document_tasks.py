@@ -1314,6 +1314,17 @@ async def _index_local_folder_async(
                         stage_message=f"Syncing files ({completed_count}/{file_count or '?'})",
                     )
 
+        async def _status_progress(status_msg: str) -> None:
+            """Show which file is being read/indexed and how far along the scan is."""
+            if notification:
+                with contextlib.suppress(Exception):
+                    await NotificationService.document_processing.notify_processing_progress(
+                        session=session,
+                        notification=notification,
+                        stage="indexing",
+                        stage_message=status_msg,
+                    )
+
         try:
             _indexed, _skipped_or_failed, _rfid, err = await index_local_folder(
                 session=session,
@@ -1325,9 +1336,10 @@ async def _index_local_folder_async(
                 file_extensions=file_extensions,
                 root_folder_id=root_folder_id,
                 target_file_paths=target_file_paths,
-                on_heartbeat_callback=_heartbeat_progress
-                if (is_batch or is_full_scan)
-                else None,
+                # Full scans report per-file detail through on_status_callback;
+                # the generic counter would overwrite it, so it is batch-only.
+                on_heartbeat_callback=_heartbeat_progress if is_batch else None,
+                on_status_callback=_status_progress if is_full_scan else None,
             )
 
             if notification:

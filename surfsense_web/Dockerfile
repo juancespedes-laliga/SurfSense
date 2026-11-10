@@ -43,7 +43,11 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm run build
+# Extra `next build` flags (e.g. "--webpack") and Node options (e.g. a larger
+# heap) can be passed as build args; both default to the stock behaviour.
+ARG NEXT_BUILD_FLAGS=""
+ARG BUILD_NODE_OPTIONS=""
+RUN NODE_OPTIONS="${BUILD_NODE_OPTIONS}" pnpm run build ${NEXT_BUILD_FLAGS}
 
 # Dev image: source is bind-mounted and `next dev` compiles it on demand, so
 # edits need no rebuild. Branches off `deps` because node_modules must stay the

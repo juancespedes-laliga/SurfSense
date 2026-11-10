@@ -128,6 +128,11 @@ def scan_folder(
             if fname in exclude_patterns:
                 continue
 
+            # Office/LibreOffice lock files ("~$doc.docx", ".~lock.doc#") exist
+            # only while a document is open; indexing them would fail or add junk.
+            if fname.startswith(("~$", ".~lock")):
+                continue
+
             full = Path(dirpath) / fname
 
             if (
@@ -216,6 +221,60 @@ async def _compute_file_content_hash(
         file_path, filename, vision_llm=vision_llm, processing_mode=processing_mode
     )
     return content, _content_hash(content, workspace_id)
+
+
+async def _store_original_file(
+    session: AsyncSession,
+    *,
+    document_id: int,
+    workspace_id: int,
+    user_id: str,
+    file_path: str,
+    replace: bool,
+) -> None:
+    """Keep a copy of the source file so the document viewer can show it.
+
+    Uploads store their original; folder-synced files only kept extracted text,
+    so PDFs opened as "missing original". ``replace=False`` only backfills a
+    document that has no stored original yet; ``replace=True`` swaps it for the
+    current bytes (new or modified file). Best-effort: failures are logged and
+    never break indexing.
+    """
+    import mimetypes
+
+    from sqlalchemy import delete as sa_delete
+
+    from app.file_storage.persistence.models import DocumentFile
+    from app.file_storage.service import (
+        get_document_file,
+        purge_document_blobs,
+        store_document_file,
+    )
+
+    try:
+        async with session.begin_nested():
+            if not replace:
+                if await get_document_file(session, document_id=document_id):
+                    return
+            else:
+                await purge_document_blobs(session, document_ids=[document_id])
+                await session.execute(
+                    sa_delete(DocumentFile).where(
+                        DocumentFile.document_id == document_id
+                    )
+                )
+            data = await asyncio.to_thread(Path(file_path).read_bytes)
+            await store_document_file(
+                session,
+                document_id=document_id,
+                workspace_id=workspace_id,
+                data=data,
+                filename=Path(file_path).name,
+                mime_type=mimetypes.guess_type(file_path)[0],
+                created_by_id=user_id,
+            )
+    except Exception as e:
+        logger.warning(f"Could not store original for {file_path}: {e}")
 
 
 async def _mirror_folder_structure(
@@ -511,8 +570,13 @@ async def index_local_folder(
     root_folder_id: int | None = None,
     target_file_paths: list[str] | None = None,
     on_heartbeat_callback: HeartbeatCallbackType | None = None,
+    on_status_callback: Callable[[str], Awaitable[None]] | None = None,
 ) -> tuple[int, int, int | None, str | None]:
     """Index files from a local folder.
+
+    ``on_status_callback`` (full-scan only) receives a human-readable line such
+    as "Leyendo archivo 3 de 10: informe.pdf" each time a file starts being
+    read or indexed, so the caller can surface it in the UI.
 
     Supports two modes:
     - Batch (target_file_paths set): processes 1..N files.
@@ -637,6 +701,12 @@ async def index_local_folder(
         failed_count = 0
 
         etl_credit_service = EtlCreditService(session)
+        total_files = len(files)
+
+        async def _report(status_msg: str) -> None:
+            if on_status_callback:
+                with contextlib.suppress(Exception):
+                    await on_status_callback(status_msg)
 
         # ================================================================
         # PHASE 1: Pre-filter files (mtime / content-hash), version changed
@@ -645,7 +715,7 @@ async def index_local_folder(
         file_meta_map: dict[str, dict] = {}
         seen_unique_hashes: set[str] = set()
 
-        for file_info in files:
+        for file_pos, file_info in enumerate(files, start=1):
             try:
                 relative_path = file_info["relative_path"]
                 file_path_abs = file_info["path"]
@@ -673,6 +743,16 @@ async def index_local_folder(
                             existing_document.status, DocumentStatus.READY
                         ):
                             existing_document.status = DocumentStatus.ready()
+                        # Backfill the viewable original for files synced
+                        # before originals were stored.
+                        await _store_original_file(
+                            session,
+                            document_id=existing_document.id,
+                            workspace_id=workspace_id,
+                            user_id=user_id,
+                            file_path=file_path_abs,
+                            replace=False,
+                        )
                         skipped_count += 1
                         continue
 
@@ -694,6 +774,9 @@ async def index_local_folder(
                         skipped_count += 1
                         continue
 
+                    await _report(
+                        f"Leyendo archivo {file_pos} de {total_files} (modificado): {file_info['name']}"
+                    )
                     try:
                         estimated_pages, _billable = await _check_credits_or_skip(
                             etl_credit_service, user_id, file_path_abs
@@ -730,6 +813,9 @@ async def index_local_folder(
 
                     await create_version_snapshot(session, existing_document)
                 else:
+                    await _report(
+                        f"Leyendo archivo {file_pos} de {total_files} (nuevo): {file_info['name']}"
+                    )
                     try:
                         estimated_pages, _billable = await _check_credits_or_skip(
                             etl_credit_service, user_id, file_path_abs
@@ -771,6 +857,7 @@ async def index_local_folder(
                 connector_docs.append(doc)
                 file_meta_map[unique_identifier] = {
                     "relative_path": relative_path,
+                    "path": file_path_abs,
                     "mtime": file_info["modified_at"].timestamp(),
                     "estimated_pages": estimated_pages,
                     "content_length": len(content),
@@ -814,6 +901,10 @@ async def index_local_folder(
 
         for doc in all_folder_docs:
             if doc.unique_identifier_hash not in seen_unique_hashes:
+                from app.file_storage.service import purge_document_blobs
+
+                # Stored originals live outside the DB; drop them with the row.
+                await purge_document_blobs(session, document_ids=[doc.id])
                 await session.delete(doc)
 
         await session.flush()
@@ -837,12 +928,15 @@ async def index_local_folder(
             doc_map = {compute_unique_identifier_hash(cd): cd for cd in connector_docs}
             documents = await pipeline.prepare_for_indexing(connector_docs)
 
-            for document in documents:
+            for doc_pos, document in enumerate(documents, start=1):
                 connector_doc = doc_map.get(document.unique_identifier_hash)
                 if connector_doc is None:
                     failed_count += 1
                     continue
 
+                await _report(
+                    f"Indexando documento {doc_pos} de {len(documents)}: {connector_doc.title}"
+                )
                 result = await pipeline.index_unless_store_owns(document, connector_doc)
 
                 # A deferral (``None``) recorded the row for the store's indexer to
@@ -859,6 +953,16 @@ async def index_local_folder(
                     doc_meta["mtime"] = mtime_info.get("mtime")
                     doc_meta["raw_file_hash"] = mtime_info.get("raw_file_hash")
                     document.document_metadata = doc_meta
+
+                    if mtime_info.get("path"):
+                        await _store_original_file(
+                            session,
+                            document_id=document.id,
+                            workspace_id=workspace_id,
+                            user_id=user_id,
+                            file_path=mtime_info["path"],
+                            replace=True,
+                        )
 
                     est = mtime_info.get("estimated_pages", 1)
                     content_len = mtime_info.get("content_length", 0)

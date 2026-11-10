@@ -80,7 +80,11 @@ services:
 
   celery_worker:
     build: *backend-build
-    volumes: *backend-volumes
+    volumes:
+      - ../surfsense_backend/app:/app/app
+      - ../surfsense_backend/.local_object_store:/app/.local_object_store
+      # Network share (read-only) so the worker can read the synced documents.
+      - compartida:/mnt/compartida:ro
     env_file:
       - ../surfsense_backend/.env
     extra_hosts:
@@ -109,13 +113,16 @@ services:
     restart: unless-stopped
 
   frontend:
+    # Production build: `next dev` over a Windows bind mount compiled each page
+    # on first visit (90 s+ for /login, minutes for /dashboard). Built once
+    # instead; web source changes need `up -d --build frontend`.
     build:
       context: ../surfsense_web
-      target: dev
-    volumes:
-      - ../surfsense_web:/app
-      - /app/node_modules
-      - /app/.next
+      target: runner
+      args:
+        # Webpack instead of Turbopack: Turbopack fails loading the Google Roboto font on this network.
+        NEXT_BUILD_FLAGS: "--webpack"
+        BUILD_NODE_OPTIONS: "--max-old-space-size=4096"
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     env_file:
@@ -126,3 +133,34 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+  # Watches the network share and asks the worker to sync it whenever
+  # something is added, modified or deleted (scripts/sincronizar_carpeta.py).
+  sincronizador:
+    build: *backend-build
+    command: ["python", "scripts/sincronizar_carpeta.py"]
+    volumes:
+      - ../surfsense_backend/scripts:/app/scripts
+      - compartida:/mnt/compartida:ro
+    env_file:
+      - ../surfsense_backend/.env
+    environment:
+      <<: *backend-env
+      PYTHONUNBUFFERED: "1"
+      SYNC_CARPETA: ${SYNC_CARPETA:-/mnt/compartida}
+    depends_on:
+      celery_worker:
+        condition: service_started
+    restart: unless-stopped
+
+# Network share mounted over SMB/CIFS. Credentials and paths live in docker/.env
+# (git-ignored). Volume options are fixed when the volume is created: after
+# changing them run `docker volume rm surfsense-deps_compartida` (with the
+# containers stopped) so it is recreated.
+volumes:
+  compartida:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//${COMPARTIDA_IP}/${COMPARTIDA_RECURSO}"
+      o: "addr=${COMPARTIDA_IP},username=${COMPARTIDA_USUARIO},password=${COMPARTIDA_CLAVE},domain=${COMPARTIDA_DOMINIO},vers=3.0,ro,file_mode=0444,dir_mode=0555"
